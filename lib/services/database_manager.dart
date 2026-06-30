@@ -1,5 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:io';
 import '../modele/redacteur.dart';
 
 class DatabaseManager {
@@ -8,9 +10,21 @@ class DatabaseManager {
   DatabaseManager._internal();
 
   static Database? _database;
+  static bool _initialized = false;
+
+  // Initialisation pour le Web
+  void _initDatabaseFactory() {
+    if (!_initialized) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+      _initialized = true;
+      print('✅ Database factory initialisée pour le Web');
+    }
+  }
 
   // Getter pour la base de données
   Future<Database> get database async {
+    _initDatabaseFactory();
     if (_database != null) return _database!;
     _database = await _initDatabase();
     return _database!;
@@ -18,7 +32,12 @@ class DatabaseManager {
 
   // Initialisation de la base de données
   Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'redacteurs.db');
+    String path;
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      path = join(await getDatabasesPath(), 'redacteurs.db');
+    } else {
+      path = 'redacteurs.db';
+    }
     print('📁 Chemin de la base : $path');
     return await openDatabase(
       path,
@@ -91,7 +110,7 @@ class DatabaseManager {
     return count;
   }
 
-  // Supprimer tous les rédacteurs (optionnel)
+  // Supprimer tous les rédacteurs
   Future<void> deleteAllRedacteurs() async {
     print('📝 Suppression de tous les rédacteurs');
     Database db = await database;

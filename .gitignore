@@ -46,4 +46,4 @@ web/manifest.json
 coverage/
 
 # Dart
-*.dart.tool
+*.dart.  

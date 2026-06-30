@@ -15,8 +15,12 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
   final TextEditingController _prenomController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
+  // Contrôleur pour la recherche
+  final TextEditingController _searchController = TextEditingController();
+
   // Liste des rédacteurs
   List<Redacteur> _redacteurs = [];
+  List<Redacteur> _redacteursFiltres = [];
 
   // Instance du DatabaseManager
   final DatabaseManager _dbManager = DatabaseManager();
@@ -25,6 +29,7 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
   void initState() {
     super.initState();
     _chargerRedacteurs();
+    _searchController.addListener(_filtrerRedacteurs);
   }
 
   @override
@@ -32,6 +37,7 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     _nomController.dispose();
     _prenomController.dispose();
     _emailController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -40,8 +46,11 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     print('🔄 Chargement des rédacteurs...');
     try {
       List<Redacteur> redacteurs = await _dbManager.getAllRedacteurs();
+      // Tri automatique par nom (piste d'amélioration)
+      redacteurs.sort((a, b) => a.nom.compareTo(b.nom));
       setState(() {
         _redacteurs = redacteurs;
+        _redacteursFiltres = redacteurs;
       });
     } catch (e) {
       print('❌ Erreur lors du chargement : $e');
@@ -49,10 +58,32 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     }
   }
 
+  // Filtrer les rédacteurs (piste d'amélioration : recherche)
+  void _filtrerRedacteurs() {
+    String query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        _redacteursFiltres = _redacteurs;
+      } else {
+        _redacteursFiltres = _redacteurs.where((redacteur) {
+          return redacteur.nom.toLowerCase().contains(query) ||
+              redacteur.prenom.toLowerCase().contains(query) ||
+              redacteur.email.toLowerCase().contains(query);
+        }).toList();
+      }
+    });
+  }
+
+  // Valider le format de l'email (piste d'amélioration)
+  bool _validerEmail(String email) {
+    if (email.isEmpty) return false;
+    return Redacteur.estEmailValide(email);
+  }
+
   // Ajouter un rédacteur
   Future<void> _ajouterRedacteur() async {
     print('=== AJOUT D\'UN RÉDACTEUR ===');
-    
+
     String nom = _nomController.text.trim();
     String prenom = _prenomController.text.trim();
     String email = _emailController.text.trim();
@@ -68,6 +99,12 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
       return;
     }
 
+    // Validation du format email (piste d'amélioration)
+    if (!_validerEmail(email)) {
+      _showSnackBar('Format d\'email invalide', Colors.red);
+      return;
+    }
+
     // Créer un nouveau rédacteur sans id
     Redacteur nouveau = Redacteur.sansId(
       nom: nom,
@@ -76,31 +113,27 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     );
 
     try {
-      // Insérer dans la base
       int id = await _dbManager.insertRedacteur(nouveau);
       print('✅ Insertion réussie, ID : $id');
 
-      // Vider les champs
       _nomController.clear();
       _prenomController.clear();
       _emailController.clear();
 
-      // Recharger la liste
       await _chargerRedacteurs();
-      _showSnackBar('Rédacteur ajouté avec succès', Colors.green);
+      _showSnackBar('✅ Rédacteur ajouté avec succès', Colors.green);
     } catch (e) {
       print('❌ Erreur lors de l\'insertion : $e');
       _showSnackBar('Erreur lors de l\'ajout du rédacteur', Colors.red);
     }
-    
+
     print('=== FIN AJOUT ===');
   }
 
   // Modifier un rédacteur
   Future<void> _modifierRedacteur(Redacteur redacteur) async {
     print('=== MODIFICATION RÉDACTEUR ID ${redacteur.id} ===');
-    
-    // Contrôleurs pré-remplis
+
     TextEditingController nomCtrl = TextEditingController(text: redacteur.nom);
     TextEditingController prenomCtrl = TextEditingController(text: redacteur.prenom);
     TextEditingController emailCtrl = TextEditingController(text: redacteur.email);
@@ -143,6 +176,11 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
                   return;
                 }
 
+                if (!_validerEmail(email)) {
+                  _showSnackBar('Format d\'email invalide', Colors.red);
+                  return;
+                }
+
                 Redacteur modifie = Redacteur(
                   id: redacteur.id,
                   nom: nom,
@@ -154,7 +192,7 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
                   await _dbManager.updateRedacteur(modifie);
                   Navigator.pop(context);
                   await _chargerRedacteurs();
-                  _showSnackBar('Rédacteur modifié avec succès', Colors.orange);
+                  _showSnackBar('✅ Rédacteur modifié avec succès', Colors.orange);
                 } catch (e) {
                   _showSnackBar('Erreur lors de la modification', Colors.red);
                 }
@@ -170,7 +208,7 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
   // Supprimer un rédacteur
   Future<void> _supprimerRedacteur(Redacteur redacteur) async {
     print('=== SUPPRESSION RÉDACTEUR ID ${redacteur.id} ===');
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -190,13 +228,50 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
                   await _dbManager.deleteRedacteur(redacteur.id!);
                   Navigator.pop(context);
                   await _chargerRedacteurs();
-                  _showSnackBar('Rédacteur supprimé avec succès', Colors.red);
+                  _showSnackBar('🗑️ Rédacteur supprimé avec succès', Colors.red);
                 } catch (e) {
                   _showSnackBar('Erreur lors de la suppression', Colors.red);
                 }
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text('Supprimer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Vider tous les rédacteurs (piste d'amélioration)
+  Future<void> _viderTousLesRedacteurs() async {
+    print('=== VIDER TOUS LES RÉDACTEURS ===');
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('⚠️ Attention'),
+          content: const Text(
+            'Êtes-vous sûr de vouloir supprimer TOUS les rédacteurs ?\n\nCette action est irréversible !',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await _dbManager.deleteAllRedacteurs();
+                  Navigator.pop(context);
+                  await _chargerRedacteurs();
+                  _showSnackBar('🗑️ Tous les rédacteurs ont été supprimés', Colors.red);
+                } catch (e) {
+                  _showSnackBar('Erreur lors de la suppression', Colors.red);
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Tout supprimer'),
             ),
           ],
         );
@@ -211,6 +286,10 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
         content: Text(message),
         backgroundColor: color,
         duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     );
   }
@@ -223,6 +302,14 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
         backgroundColor: Colors.pink,
         foregroundColor: Colors.white,
         centerTitle: true,
+        actions: [
+          // Bouton pour vider tous les rédacteurs (piste d'amélioration)
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            onPressed: _redacteurs.isEmpty ? null : _viderTousLesRedacteurs,
+            tooltip: 'Supprimer tous les rédacteurs',
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -259,6 +346,7 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
                         labelText: 'Email',
                         prefixIcon: Icon(Icons.email),
                         border: OutlineInputBorder(),
+                        helperText: 'exemple@domaine.com',
                       ),
                       keyboardType: TextInputType.emailAddress,
                     ),
@@ -282,9 +370,20 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
             ),
             const SizedBox(height: 15),
 
+            // Champ de recherche (piste d'amélioration)
+            TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                labelText: 'Rechercher un rédacteur',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+
             // Liste des rédacteurs
             Expanded(
-              child: _redacteurs.isEmpty
+              child: _redacteursFiltres.isEmpty
                   ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -303,9 +402,9 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
                       ),
                     )
                   : ListView.builder(
-                      itemCount: _redacteurs.length,
+                      itemCount: _redacteursFiltres.length,
                       itemBuilder: (context, index) {
-                        Redacteur redacteur = _redacteurs[index];
+                        Redacteur redacteur = _redacteursFiltres[index];
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 5),
                           child: ListTile(

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'views/redacteur_interface.dart';
 
 void main() {
+  // Initialiser sqflite pour le Web
+  sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
   runApp(const MonApplication());
 }
 
