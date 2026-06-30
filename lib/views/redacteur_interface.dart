@@ -46,7 +46,6 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     print('🔄 Chargement des rédacteurs...');
     try {
       List<Redacteur> redacteurs = await _dbManager.getAllRedacteurs();
-      // Tri automatique par nom (piste d'amélioration)
       redacteurs.sort((a, b) => a.nom.compareTo(b.nom));
       setState(() {
         _redacteurs = redacteurs;
@@ -58,7 +57,7 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     }
   }
 
-  // Filtrer les rédacteurs (piste d'amélioration : recherche)
+  // Filtrer les rédacteurs
   void _filtrerRedacteurs() {
     String query = _searchController.text.toLowerCase();
     setState(() {
@@ -74,10 +73,13 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     });
   }
 
-  // Valider le format de l'email (piste d'amélioration)
+  // Valider le format de l'email
   bool _validerEmail(String email) {
     if (email.isEmpty) return false;
-    return Redacteur.estEmailValide(email);
+    final emailRegExp = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
+    return emailRegExp.hasMatch(email);
   }
 
   // Ajouter un rédacteur
@@ -88,24 +90,16 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     String prenom = _prenomController.text.trim();
     String email = _emailController.text.trim();
 
-    print('Nom : "$nom"');
-    print('Prénom : "$prenom"');
-    print('Email : "$email"');
-
-    // Validation des champs
     if (nom.isEmpty || prenom.isEmpty || email.isEmpty) {
-      print('❌ Champs vides détectés');
       _showSnackBar('Veuillez remplir tous les champs', Colors.red);
       return;
     }
 
-    // Validation du format email (piste d'amélioration)
     if (!_validerEmail(email)) {
       _showSnackBar('Format d\'email invalide', Colors.red);
       return;
     }
 
-    // Créer un nouveau rédacteur sans id
     Redacteur nouveau = Redacteur.sansId(
       nom: nom,
       prenom: prenom,
@@ -113,27 +107,19 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     );
 
     try {
-      int id = await _dbManager.insertRedacteur(nouveau);
-      print('✅ Insertion réussie, ID : $id');
-
+      await _dbManager.insertRedacteur(nouveau);
       _nomController.clear();
       _prenomController.clear();
       _emailController.clear();
-
       await _chargerRedacteurs();
       _showSnackBar('✅ Rédacteur ajouté avec succès', Colors.green);
     } catch (e) {
-      print('❌ Erreur lors de l\'insertion : $e');
       _showSnackBar('Erreur lors de l\'ajout du rédacteur', Colors.red);
     }
-
-    print('=== FIN AJOUT ===');
   }
 
   // Modifier un rédacteur
   Future<void> _modifierRedacteur(Redacteur redacteur) async {
-    print('=== MODIFICATION RÉDACTEUR ID ${redacteur.id} ===');
-
     TextEditingController nomCtrl = TextEditingController(text: redacteur.nom);
     TextEditingController prenomCtrl = TextEditingController(text: redacteur.prenom);
     TextEditingController emailCtrl = TextEditingController(text: redacteur.email);
@@ -207,8 +193,6 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
 
   // Supprimer un rédacteur
   Future<void> _supprimerRedacteur(Redacteur redacteur) async {
-    print('=== SUPPRESSION RÉDACTEUR ID ${redacteur.id} ===');
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -242,10 +226,8 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
     );
   }
 
-  // Vider tous les rédacteurs (piste d'amélioration)
+  // Vider tous les rédacteurs
   Future<void> _viderTousLesRedacteurs() async {
-    print('=== VIDER TOUS LES RÉDACTEURS ===');
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -303,7 +285,6 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
         foregroundColor: Colors.white,
         centerTitle: true,
         actions: [
-          // Bouton pour vider tous les rédacteurs (piste d'amélioration)
           IconButton(
             icon: const Icon(Icons.delete_sweep),
             onPressed: _redacteurs.isEmpty ? null : _viderTousLesRedacteurs,
@@ -312,34 +293,39 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
         ],
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(8.0), // Réduit de 16 à 8
         child: Column(
           children: [
-            // Zone de saisie
+            // Zone de saisie - Plus compacte
             Card(
-              elevation: 4,
+              elevation: 3,
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(12.0), // Réduit de 16 à 12
                 child: Column(
                   children: [
+                    // Champs plus compacts
                     TextField(
                       controller: _nomController,
                       decoration: const InputDecoration(
                         labelText: 'Nom',
                         prefixIcon: Icon(Icons.person),
                         border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
+                      style: const TextStyle(fontSize: 14),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     TextField(
                       controller: _prenomController,
                       decoration: const InputDecoration(
                         labelText: 'Prénom',
                         prefixIcon: Icon(Icons.person_outline),
                         border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
+                      style: const TextStyle(fontSize: 14),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     TextField(
                       controller: _emailController,
                       decoration: const InputDecoration(
@@ -347,20 +333,24 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
                         prefixIcon: Icon(Icons.email),
                         border: OutlineInputBorder(),
                         helperText: 'exemple@domaine.com',
+                        helperStyle: TextStyle(fontSize: 10),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
                       keyboardType: TextInputType.emailAddress,
+                      style: const TextStyle(fontSize: 14),
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: _ajouterRedacteur,
-                        icon: const Icon(Icons.add),
+                        icon: const Icon(Icons.add, size: 18),
                         label: const Text('Ajouter un Rédacteur'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.pink,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          textStyle: const TextStyle(fontSize: 14),
                         ),
                       ),
                     ),
@@ -368,35 +358,37 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
                 ),
               ),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: 10),
 
-            // Champ de recherche (piste d'amélioration)
+            // Champ de recherche
             TextField(
               controller: _searchController,
               decoration: const InputDecoration(
                 labelText: 'Rechercher un rédacteur',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
+              style: const TextStyle(fontSize: 14),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
-            // Liste des rédacteurs
+            // Liste des rédacteurs - avec Expanded pour prendre tout l'espace restant
             Expanded(
               child: _redacteursFiltres.isEmpty
                   ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.people_outline, size: 60, color: Colors.grey),
-                          SizedBox(height: 10),
+                          Icon(Icons.people_outline, size: 50, color: Colors.grey),
+                          SizedBox(height: 8),
                           Text(
                             'Aucun rédacteur enregistré',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
                           ),
                           Text(
                             'Ajoutez votre premier rédacteur !',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],
                       ),
@@ -406,35 +398,48 @@ class _RedacteurInterfaceState extends State<RedacteurInterface> {
                       itemBuilder: (context, index) {
                         Redacteur redacteur = _redacteursFiltres[index];
                         return Card(
-                          margin: const EdgeInsets.symmetric(vertical: 5),
+                          margin: const EdgeInsets.symmetric(vertical: 4),
                           child: ListTile(
+                            dense: true, // Réduit la hauteur des ListTile
                             leading: CircleAvatar(
+                              radius: 18,
                               backgroundColor: Colors.pink.shade100,
                               child: Text(
                                 redacteur.prenom[0].toUpperCase(),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.pink,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
                             title: Text(
                               '${redacteur.prenom} ${redacteur.nom}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
-                            subtitle: Text(redacteur.email),
+                            subtitle: Text(
+                              redacteur.email,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.edit, color: Colors.orange),
+                                  icon: const Icon(Icons.edit, color: Colors.orange, size: 20),
                                   onPressed: () => _modifierRedacteur(redacteur),
                                   tooltip: 'Modifier',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
                                   onPressed: () => _supprimerRedacteur(redacteur),
                                   tooltip: 'Supprimer',
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
                                 ),
                               ],
                             ),
