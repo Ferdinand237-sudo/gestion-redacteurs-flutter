@@ -1,0 +1,49 @@
+# Flutter
+.dart_tool/
+build/
+*.iml
+*.lock
+*.log
+*.pid
+*.swp
+.idea/
+.vscode/
+pubspec.lock
+
+# Android
+android/app/build/
+android/build/
+android/local.properties
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/App.framework/
+ios/Flutter/Flutter.framework/
+ios/Flutter/flutter_assets/
+ios/Flutter/Flutter.podspec
+
+# macOS
+macos/Pods/
+macos/Flutter/Flutter.podspec
+
+# Windows
+windows/Flutter/GeneratedPluginRegistrant.*
+windows/Flutter/ephemeral/
+
+# Linux
+linux/Flutter/GeneratedPluginRegistrant.*
+linux/flutter/ephemeral/
+
+# Web
+web/favicon.png
+web/index.html
+web/manifest.json
+
+# Test
+coverage/
+
+# Dart
+*.dart.tool
